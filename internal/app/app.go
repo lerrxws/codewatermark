@@ -1,13 +1,13 @@
 package app
 
 import (
-	"bytes"
 	"fmt"
-	"go/format"
+	"go/ast"
 	"go/parser"
 	"go/token"
+	"bytes"
+	"go/format"
 	"os"
-
 	"github.com/lerrxws/codewatermark/internal/watermark"
 	"github.com/lerrxws/codewatermark/internal/watermark/rules"
 )
@@ -24,6 +24,28 @@ func Run(options Options) error {
 	if err != nil {
 		return fmt.Errorf("parse source: %w", err)
 	}
+
+	if err := ast.Print(fset, file); err != nil {
+		return fmt.Errorf("print AST: %w", err)
+	}
+
+	rule := rules.BooleanComparison{}
+	matches := 0
+
+	ast.Inspect(file, func(node ast.Node) bool {
+		statement, ok := node.(ast.Stmt)
+		if ok && rule.Match(statement) {
+			matches++
+			fmt.Printf("Matched %T at %s\n",
+				statement,
+				fset.Position(statement.Pos()),
+			)
+		}
+
+		return true
+	})
+
+	fmt.Printf("Total matches: %d\n", matches)
 
 	if err := watermark.Embed(file, options.Bits, buildRules()); err != nil {
 		return fmt.Errorf("embed watermark: %w", err)
@@ -43,8 +65,9 @@ func Run(options Options) error {
 
 func buildRules() []watermark.Rule {
 	return []watermark.Rule{
-		rules.Increment{},
-		rules.Assignment{},
-		rules.Declaration{},
+		// rules.Increment{},
+		// rules.Assignment{},
+		// rules.Declaration{},
+		rules.BooleanComparison{},
 	}
 }

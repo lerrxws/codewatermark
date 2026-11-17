@@ -54,6 +54,6 @@ func run() error {
 		return err
 	}
 
-	fmt.Println("Watermarked source saved to:", outputPath)
+	// fmt.Println("Watermarked source saved to:", outputPath)
 	return nil
 }

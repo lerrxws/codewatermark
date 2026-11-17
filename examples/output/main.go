@@ -1,14 +1,11 @@
 package main
 
-import "fmt"
-
 func main() {
-	numbers := []int{2, 4, 6}
-	total := 0
+	flag := true
 
-	for _, number := range numbers {
-		total = total + number
+	if flag == true {
 	}
 
-	fmt.Println("Total:", total)
+	if flag {
+	}
 }
