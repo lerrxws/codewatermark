@@ -1,15 +1,17 @@
 package app
 
 import (
-	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"bytes"
-	"go/format"
-	"os"
+	"fmt"
 	"github.com/lerrxws/codewatermark/internal/watermark"
 	"github.com/lerrxws/codewatermark/internal/watermark/rules"
+	"go/ast"
+	"go/format"
+	"go/importer"
+	"go/parser"
+	"go/token"
+	"go/types"
+	"os"
 )
 
 type Options struct {
@@ -25,11 +27,19 @@ func Run(options Options) error {
 		return fmt.Errorf("parse source: %w", err)
 	}
 
+	typeInfo := &types.Info{
+		Scopes: make(map[ast.Node]*types.Scope),
+	}
+	typeChecker := types.Config{Importer: importer.Default()}
+	if _, err := typeChecker.Check(file.Name.Name, fset, []*ast.File{file}, typeInfo); err != nil {
+		return fmt.Errorf("type-check source: %w", err)
+	}
+
 	if err := ast.Print(fset, file); err != nil {
 		return fmt.Errorf("print AST: %w", err)
 	}
 
-	rule := rules.BooleanComparison{}
+	rule := rules.BooleanComparison{Scopes: typeInfo.Scopes}
 	matches := 0
 
 	ast.Inspect(file, func(node ast.Node) bool {
@@ -47,7 +57,7 @@ func Run(options Options) error {
 
 	fmt.Printf("Total matches: %d\n", matches)
 
-	if err := watermark.Embed(file, options.Bits, buildRules()); err != nil {
+	if err := watermark.Embed(file, options.Bits, buildRules(typeInfo.Scopes)); err != nil {
 		return fmt.Errorf("embed watermark: %w", err)
 	}
 
@@ -63,11 +73,11 @@ func Run(options Options) error {
 	return nil
 }
 
-func buildRules() []watermark.Rule {
+func buildRules(scopes map[ast.Node]*types.Scope) []watermark.Rule {
 	return []watermark.Rule{
 		// rules.Increment{},
 		// rules.Assignment{},
 		// rules.Declaration{},
-		rules.BooleanComparison{},
+		rules.BooleanComparison{Scopes: scopes},
 	}
 }
